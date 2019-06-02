@@ -3,18 +3,19 @@
     xmlns:dist="http://schemas.android.com/apk/distribution"
     package="com.andor.navigate.logit">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <dist:module dist:instant="true" />
 
     <application
-        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".welcome.WelcomeActivity"></activity>
-        <activity android:name=".auth.MainActivity">
+        <activity android:name=".welcome.WelcomeActivity" />
+        <activity android:name=".auth.AuthActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <action android:name="android.intent.action.VIEW" />

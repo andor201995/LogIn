@@ -1,4 +1,4 @@
-package com.andor.navigate.logit.core.listener
+package com.andor.navigate.logit.core
 
 import android.os.SystemClock
 import android.view.View
