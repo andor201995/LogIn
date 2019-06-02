@@ -1,24 +1,40 @@
 package com.andor.navigate.logit
 
 import android.app.Application
+import android.content.SharedPreferences
 import com.andor.navigate.logit.auth.Session
-import com.andor.navigate.logit.core.AuthorizationInterceptor
-import com.andor.navigate.logit.core.Utils.Companion.getAuthorizationHeader
+import com.andor.navigate.logit.core.Utils
 import com.andor.navigate.logit.core.api.ApiService
 import com.google.gson.Gson
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 
 class MyApplication : Application() {
 
+    private lateinit var mPreferences: SharedPreferences
     private lateinit var session: Session
     private lateinit var apiService: ApiService
-    private var authenticationListener: AuthenticationListener? = null
+    private lateinit var authenticationListener: AuthenticationListener
+
+    companion object {
+        const val MY_PREFS_NAME = "com.andor.navigate.authsharedprefs"
+        const val EMAIL = "email"
+        const val PASSWORD = "password"
+        const val TOKEN = "token"
+        const val DEFAULT = "default"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        mPreferences = getSharedPreferences(MY_PREFS_NAME, MODE_PRIVATE)
+        //initiating on create
+        getApiService()
+        getSession()
+
+    }
 
     // use a storage option to store the
     // credentails and user info
@@ -27,41 +43,59 @@ class MyApplication : Application() {
         if (!::session.isInitialized) {
             session = object : Session {
                 override fun isLoggedIn(): Boolean {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    if (getToken() != DEFAULT) {
+                        return true
+                    }
+                    return false
                 }
 
                 override fun getToken(): String {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    return mPreferences.getString(TOKEN, DEFAULT)!!
                 }
 
                 override fun getEmail(): String {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    return mPreferences.getString(EMAIL, DEFAULT)!!
                 }
 
                 override fun getPassword(): String {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    return mPreferences.getString(EMAIL, DEFAULT)!!
                 }
 
                 override fun saveToken(token: String) {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    val preferencesEditor = mPreferences.edit()
+                    preferencesEditor.putString(TOKEN, token)
+                    preferencesEditor.apply()
                 }
 
                 override fun saveEmail(email: String) {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    val preferencesEditor = mPreferences.edit()
+                    preferencesEditor.putString(EMAIL, email)
+                    preferencesEditor.apply()
                 }
 
                 override fun savePassword(password: String) {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    val preferencesEditor = mPreferences.edit()
+                    preferencesEditor.putString(PASSWORD, password)
+                    preferencesEditor.apply()
                 }
 
                 override fun invalidate() {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                    val preferencesEditor = mPreferences.edit()
+                    preferencesEditor.clear().apply()
+                    if (::authenticationListener.isInitialized) {
+                        authenticationListener.onUserLoggedOut()
+                    }
                 }
 
             }
         }
 
         return session
+    }
+
+    private fun isTokenExpired(): Boolean {
+        //TODO: check if token is expired while user start's the app
+        return false
     }
 
     interface AuthenticationListener {
@@ -92,8 +126,22 @@ class MyApplication : Application() {
         okhttpClientBuilder.connectTimeout(30, TimeUnit.SECONDS)
         okhttpClientBuilder.readTimeout(30, TimeUnit.SECONDS)
         okhttpClientBuilder.writeTimeout(30, TimeUnit.SECONDS)
-        okhttpClientBuilder.addInterceptor(AuthorizationInterceptor(getApiService(), getSession()))
 
+        okhttpClientBuilder.authenticator { route, response ->
+            //sync call
+            val execute =
+                getApiService().loginAccount(Utils.getAuthorizationHeader(session.getEmail(), session.getPassword()))
+                    .execute()
+            if (execute.isSuccessful) {
+                execute.body()?.token?.let {
+                    session.saveToken(it)
+                    return@authenticator response.request().newBuilder()
+                        .header("Auth-Token", it)
+                        .build()
+                }
+            }
+            null
+        }
         return okhttpClientBuilder.build()
     }
 }

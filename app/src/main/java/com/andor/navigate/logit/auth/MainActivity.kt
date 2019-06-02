@@ -10,8 +10,12 @@ import com.andor.navigate.logit.R
 import com.andor.navigate.logit.core.Utils
 import com.andor.navigate.logit.core.api.ApiService
 import com.andor.navigate.logit.core.listener.DebouncedOnClickListener
+import com.andor.navigate.logit.core.model.Authorization
 import com.andor.navigate.logit.welcome.WelcomeActivity
 import kotlinx.android.synthetic.main.activity_main.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class MainActivity : AppCompatActivity() {
 
@@ -54,16 +58,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun login(email: String, password: String) {
         if (isEmailValid(email) && isPasswordValid(password)) {
-            session.saveEmail(email)
-            session.savePassword(password)
             val loginAccount = apiService.loginAccount(Utils.getAuthorizationHeader(email, password))
-            val execute = loginAccount.execute()
-            if (execute.isSuccessful) {
-                session.saveToken(execute.body()?.token!!)
-            } else {
-                Toast.makeText(this, "login failed", Toast.LENGTH_SHORT).show()
-            }
+            loginAccount.enqueue(object : Callback<Authorization> {
+                override fun onFailure(call: Call<Authorization>, t: Throwable) {
+                    Toast.makeText(this@MainActivity, "login failed", Toast.LENGTH_SHORT).show()
+                }
 
+                override fun onResponse(call: Call<Authorization>, response: Response<Authorization>) {
+                    progressBar.hide()
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@MainActivity, "login successful", Toast.LENGTH_SHORT).show()
+                        response.body()?.token?.let {
+                            session.saveToken(it)
+                            session.saveEmail(email)
+                            session.savePassword(password)
+                            startWelcomeActivity()
+                            return
+                        }
+                        Toast.makeText(this@MainActivity, "login failed", Toast.LENGTH_SHORT).show()
+
+                    } else {
+                        Toast.makeText(this@MainActivity, "login failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+            })
         } else {
             Toast.makeText(this, "Invalid Email and password", Toast.LENGTH_SHORT).show()
         }
