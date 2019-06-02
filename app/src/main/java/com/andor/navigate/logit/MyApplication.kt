@@ -2,12 +2,15 @@ package com.andor.navigate.logit
 
 import android.app.Application
 import com.andor.navigate.logit.auth.Session
-import com.andor.navigate.logit.auth.TokenAuthenticator
+import com.andor.navigate.logit.core.AuthorizationInterceptor
+import com.andor.navigate.logit.core.Utils.Companion.getAuthorizationHeader
 import com.andor.navigate.logit.core.api.ApiService
 import com.google.gson.Gson
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 
@@ -16,10 +19,6 @@ class MyApplication : Application() {
     private lateinit var session: Session
     private lateinit var apiService: ApiService
     private var authenticationListener: AuthenticationListener? = null
-
-    override fun onCreate() {
-        super.onCreate()
-    }
 
     // use a storage option to store the
     // credentails and user info
@@ -93,7 +92,7 @@ class MyApplication : Application() {
         okhttpClientBuilder.connectTimeout(30, TimeUnit.SECONDS)
         okhttpClientBuilder.readTimeout(30, TimeUnit.SECONDS)
         okhttpClientBuilder.writeTimeout(30, TimeUnit.SECONDS)
-        okhttpClientBuilder.authenticator(TokenAuthenticator(getApiService(), getSession()))
+        okhttpClientBuilder.addInterceptor(AuthorizationInterceptor(getApiService(), getSession()))
 
         return okhttpClientBuilder.build()
     }
