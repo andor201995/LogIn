@@ -1,4 +1,4 @@
-package com.andor.navigate.logit.core.model
+package com.andor.navigate.logit.welcome
 
 import com.google.gson.annotations.Expose
 import com.google.gson.annotations.SerializedName
